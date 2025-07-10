@@ -20,6 +20,7 @@ session_service = DatabaseSessionService(db_url=db_url)
 # Adjusted initial state for the multi-agent setup
 initial_state = {
     "user_name": "Multi-Agent User",
+    "reminders": [],  # Added for the reminder_agent
     "last_joke_topic": None,
     "validated_responses_count": 0,
     # Add other relevant initial states if needed by sub-agents

@@ -4,12 +4,14 @@ This document provides guidance for interacting with and modifying the multi-age
 
 ## System Overview
 
-The system now uses a `manager_agent` that delegates tasks to two specialized sub-agents:
+The system now uses a `manager_agent` that delegates tasks to three specialized sub-agents:
 1.  `joke_agent`: Responsible for telling jokes.
-2.  `validator_agent`: Responsible for validating text, for example, checking for politeness.
+2.  `validator_agent`: Responsible for validating text (e.g., for politeness).
+3.  `reminder_agent`: Responsible for managing a list of reminders (add, view, update, delete).
 
 All agents in this system share a persistent session state managed by `DatabaseSessionService`. This state includes:
 -   `user_name`: The name of the user.
+-   `reminders`: A list of reminder strings.
 -   `last_joke_topic`: The topic of the last joke told by `joke_agent`.
 -   `validated_responses_count`: A counter for how many times `validator_agent` has performed a validation.
 
@@ -22,10 +24,16 @@ When running `main.py`:
 -   You can ask the `manager_agent` to validate a piece of text. It should delegate this to the `validator_agent`.
     -   Example: "Validate this sentence: Thank you for your help."
     -   Example: "Is 'be quiet' a polite phrase?"
+-   You can ask the `manager_agent` to manage your reminders. It should delegate this to the `reminder_agent`.
+    -   Example: "Add a reminder to buy milk."
+    -   Example: "Show me my reminders."
+    -   Example: "Update reminder 1 to 'Buy groceries tomorrow'."
+    -   Example: "Delete my first reminder."
 -   The `manager_agent` can also access shared state directly.
     -   Example: "What was the last joke about?"
     -   Example: "How many responses have I asked you to validate?"
     -   Example: "What is my name?" (It will use the `user_name` from the state).
+    -   Example: "Do I have any reminders?" (It will access the `reminders` list from the state).
 
 ## Modifying Agents
 
@@ -38,6 +46,9 @@ When running `main.py`:
 -   **Validator Agent (`multi_agent_persistent_storage/sub_agents/validator/agent.py`):**
     -   Its primary tool is `validate_response_politeness`.
     -   It reads and writes `validated_responses_count` to the session state.
+-   **Reminder Agent (`multi_agent_persistent_storage/sub_agents/reminder/agent.py`):**
+    -   Its tools are `add_reminder`, `view_reminders`, `update_reminder`, `delete_reminder`.
+    -   It reads and writes the `reminders` list in the session state.
 -   **Session State:**
     -   The initial state is defined in `main.py`.
     -   All agents can access the shared state via `tool_context.state` within their tools. Ensure that state keys are used consistently.
