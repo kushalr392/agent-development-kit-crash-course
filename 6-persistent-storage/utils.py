@@ -44,14 +44,21 @@ def display_state(
         user_name = session.state.get("user_name", "Unknown")
         print(f"👤 User: {user_name}")
 
-        # Handle reminders
+        # Handle reminders (keeping for now, though not primary focus of new agents)
         reminders = session.state.get("reminders", [])
         if reminders:
-            print("📝 Reminders:")
+            print("📝 Reminders (Legacy):")
             for idx, reminder in enumerate(reminders, 1):
                 print(f"  {idx}. {reminder}")
         else:
-            print("📝 Reminders: None")
+            print("📝 Reminders (Legacy): None")
+
+        # Display new state variables for multi-agent setup
+        last_joke_topic = session.state.get("last_joke_topic", "None")
+        print(f"😂 Last Joke Topic: {last_joke_topic}")
+
+        validated_count = session.state.get("validated_responses_count", 0)
+        print(f"✔️ Validated Responses Count: {validated_count}")
 
         print("-" * (22 + len(label)))
     except Exception as e:

@@ -3,29 +3,33 @@ import asyncio
 from dotenv import load_dotenv
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
-from memory_agent.agent import memory_agent
+# Updated import to point to the new manager agent
+from multi_agent_persistent_storage.agent import manager_agent
 from utils import call_agent_async
 
 load_dotenv()
 
 # ===== PART 1: Initialize Persistent Session Service =====
 # Using SQLite database for persistent storage
-db_url = "sqlite:///./my_agent_data.db"
+db_url = "sqlite:///./my_multi_agent_data.db"  # Changed db name for clarity
 session_service = DatabaseSessionService(db_url=db_url)
 
 
 # ===== PART 2: Define Initial State =====
 # This will only be used when creating a new session
+# Adjusted initial state for the multi-agent setup
 initial_state = {
-    "user_name": "Brandon Hancock",
-    "reminders": [],
+    "user_name": "Multi-Agent User",
+    "last_joke_topic": None,
+    "validated_responses_count": 0,
+    # Add other relevant initial states if needed by sub-agents
 }
 
 
 async def main_async():
     # Setup constants
-    APP_NAME = "Memory Agent"
-    USER_ID = "aiwithbrandon"
+    APP_NAME = "Multi Agent Persistent Storage"  # Updated App Name
+    USER_ID = "ai_user_multi"  # Changed User ID for clarity
 
     # ===== PART 3: Session Management - Find or Create =====
     # Check for existing sessions for this user
@@ -50,16 +54,16 @@ async def main_async():
         print(f"Created new session: {SESSION_ID}")
 
     # ===== PART 4: Agent Runner Setup =====
-    # Create a runner with the memory agent
+    # Create a runner with the manager_agent
     runner = Runner(
-        agent=memory_agent,
+        agent=manager_agent,  # Using the new manager_agent
         app_name=APP_NAME,
         session_service=session_service,
     )
 
     # ===== PART 5: Interactive Conversation Loop =====
-    print("\nWelcome to Memory Agent Chat!")
-    print("Your reminders will be remembered across conversations.")
+    print(f"\nWelcome to {APP_NAME} Chat!")
+    print("I can tell jokes and validate responses. My memory is persistent.")
     print("Type 'exit' or 'quit' to end the conversation.\n")
 
     while True:
