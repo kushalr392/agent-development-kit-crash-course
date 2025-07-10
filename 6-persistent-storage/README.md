@@ -5,16 +5,20 @@ This example demonstrates a more complex ADK application featuring a **multi-age
 ## What is Demonstrated?
 
 This example showcases:
-1.  **Multi-Agent Architecture**: A `manager_agent` delegates tasks to specialized sub-agents:
-    *   `reminder_agent`: Manages a user's to-do list (add, view, update, delete).
-    *   `joke_agent`: Tells jokes on various topics.
-    *   `validator_agent`: Performs simple text validation (e.g., for politeness).
-2.  **Persistent Storage with `DatabaseSessionService`**: Session data (including user information and agent-specific states) is stored in an SQLite database. This ensures:
-    *   **Long-term Memory**: Information persists across application restarts.
-    *   **Consistent User Experiences**: Users can continue conversations where they left off.
-    *   **Shared State**: Sub-agents can access and modify a common pool of information relevant to their tasks (e.g., `reminders` list, `last_joke_topic`).
-3.  **Session Management**: Proper handling of finding existing user sessions or creating new ones.
-4.  **State Management within Tools**: Sub-agents update the shared persistent state through `tool_context.state` in their respective tools.
+1.  **Orchestrated Multi-Agent Architecture with Mandatory Validation**:
+    *   A `manager_agent` orchestrates a sequence: content generation by a sub-agent, then mandatory validation of that content by another sub-agent.
+    *   **Content Sub-Agents** (invoked as tools by the manager):
+        *   `reminder_agent`: Manages a user's to-do list.
+        *   `joke_agent`: Tells jokes.
+    *   **Validation Sub-Agent** (invoked as a tool by the manager):
+        *   `validator_agent`: Reviews all responses from content agents for appropriateness, politeness, and correctness before they are sent to the user.
+    *   **Retry Mechanism**: If validation fails, the manager attempts one retry with the content agent, providing feedback from the validator.
+2.  **Persistent Storage with `DatabaseSessionService`**: Session data is stored in an SQLite database, ensuring:
+    *   **Long-term Memory**: User details, reminders, joke history, and validation counts persist.
+    *   **Consistent User Experiences**: Conversations can be resumed.
+    *   **Shared State**: Agents access a common state pool (e.g., `reminders` list, `last_joke_topic`).
+3.  **Session Management**: Standard ADK session finding or creation.
+4.  **State Management within Tools**: Sub-agents update the shared state via `tool_context.state`.
 
 ## Project Structure
 
@@ -65,18 +69,20 @@ This service manages storing and retrieving session data from the SQLite databas
 
 ### 2. `manager_agent`
 
-Defined in `multi_agent_persistent_storage/agent.py`. This agent:
--   Doesn't perform tasks directly.
--   Its primary role is to understand the user's query and delegate it to the appropriate sub-agent (`reminder_agent`, `joke_agent`, or `validator_agent`).
--   Has access to the shared session state (e.g., `{user_name}`, `{reminders}`) and can answer some simple queries directly.
+Defined in `multi_agent_persistent_storage/agent.py`. This agent is the core orchestrator:
+-   It uses `AgentTool` to call `joke_agent` or `reminder_agent` for content.
+-   It then *always* calls `validator_agent` (also as an `AgentTool`) to review the generated content.
+-   It handles a single retry attempt if validation fails, by re-prompting the content agent with feedback from the validator.
+-   If validation fails after the retry, it issues a safe fallback response.
+-   Its complex `instruction` field details this sequential workflow.
 
-### 3. Sub-Agents
+### 3. Sub-Agents (Used as Tools by the Manager)
 
--   **`reminder_agent`**: Manages a list of reminders stored in `tool_context.state["reminders"]`.
--   **`joke_agent`**: Tells jokes and can remember the `tool_context.state["last_joke_topic"]`.
--   **`validator_agent`**: Validates text and updates `tool_context.state["validated_responses_count"]`.
+-   **`reminder_agent`**: Generates responses related to reminder tasks. Its output is then validated.
+-   **`joke_agent`**: Generates jokes. Its output is then validated.
+-   **`validator_agent`**: Contains a tool (`review_and_approve_response`) with rules to check text for politeness, basic correctness, and appropriateness. It does not interact directly with the user.
 
-Each sub-agent has specific tools to perform its tasks and interacts with the shared session state.
+Each sub-agent's tools primarily focus on their specific task, with the `validator_agent`'s tool being central to the new quality control process.
 
 ### 4. Session and State Management
 
@@ -113,30 +119,27 @@ python main.py
 This will:
 1.  Connect to `my_multi_agent_data.db` (or create it).
 2.  Check for previous sessions or create a new one.
-3.  Start a conversation with the `manager_agent`.
+3.  Start a conversation. The `manager_agent` will handle the internal workflow.
 4.  Persist all interactions and state changes.
 
 ### Example Interactions
 
-The `manager_agent` will delegate tasks. Try these:
+All user-facing responses are now subject to internal validation.
+The `manager_agent` orchestrates this.
 
-1.  **Initial Interaction & Reminders:**
-    *   "Hi, my name is Alex." (The manager might note this, or you can set `user_name` via a tool if one were added for it. The state has a default `user_name`.)
+1.  **Reminders:**
     *   "Add a reminder: Call Mom tomorrow."
-    *   "Add another reminder: Buy groceries."
-    *   "What are my reminders?"
-    *   "Update reminder 1 to 'Call Mom tomorrow at 6 PM'."
-    *   "Delete the second reminder."
+    *   "Show my reminders."
+    *   (If a reminder response was initially phrased poorly by `reminder_agent`, the `validator_agent` would flag it, and `manager_agent` would attempt a retry with `reminder_agent` before you see a response.)
 
 2.  **Jokes:**
     *   "Tell me a joke."
-    *   "Tell me a programming joke."
-    *   "What was the last joke about?" (Manager might answer this from state)
+    *   (If `joke_agent`'s first attempt is, for example, not polite or uses flagged words, it will be internally retried after validation feedback.)
 
-3.  **Validation:**
-    *   "Validate this: You are very helpful, thank you!"
-    *   "Is 'this is urgent' polite?"
-    *   "How many responses have I validated?" (Manager might answer this)
+3.  **Observing Validation (Indirectly):**
+    *   Try to elicit a response that might be borderline for politeness or appropriateness. The system will attempt to self-correct or provide a fallback.
+    *   Check the console logs: You'll see more internal activity, including calls to `tool_validator_agent` and its `review_and_approve_response` tool, and potentially retry attempts. This is where the validation process is most visible.
+    *   "How many responses have I validated?" (Manager might answer this from state, referring to `validated_responses_count` which is incremented by the validator tool).
 
 4.  **Persistence Test:**
     *   Exit the program with "exit" or "quit".

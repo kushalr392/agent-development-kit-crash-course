@@ -64,7 +64,7 @@ async def main_async():
 
     # ===== PART 5: Interactive Conversation Loop =====
     print(f"\nWelcome to {APP_NAME} Chat!")
-    print("I can tell jokes and validate responses. My memory is persistent.")
+    print("I can tell jokes and manage your reminders. All my responses are carefully checked before being sent. My memory is persistent.")
     print("Type 'exit' or 'quit' to end the conversation.\n")
 
     while True:
